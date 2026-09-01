@@ -96,6 +96,26 @@
     max-width: 56ch;
   }
 
+  .site-nav{
+    display: flex;
+    gap: 8px;
+    margin-bottom: 26px;
+  }
+  .site-nav a{
+    font-family: var(--font-body);
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 16px;
+    transition: color .15s ease, border-color .15s ease;
+  }
+  .site-nav a:hover{ color: var(--text); border-color: var(--text-muted); }
+  .site-nav a.active{ color: #17130a; background: var(--gold); border-color: var(--gold); }
+
   /* ---------- Upload zone ---------- */
 
   .upload-zone{
@@ -407,6 +427,11 @@
       <p>ارفع بيانات أي سهم من ملف CSV، واعرض اتجاهه عبر متوسطات متحركة قابلة للتخصيص — كل الحساب يتم داخل متصفحك، بلا رفع لأي سيرفر.</p>
     </div>
   </header>
+
+  <nav class="site-nav">
+    <a href="index.html" class="active">محلل المتوسطات المتحركة</a>
+    <a href="market.html">أسعار السوق</a>
+  </nav>
 
   <section class="upload-zone" id="dropZone" tabindex="0" role="button" aria-label="ارفع ملف CSV">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v13m0-13 5 5m-5-5-5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>

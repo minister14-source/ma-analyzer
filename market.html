@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أسعار السوق | جميع الأسهم السعودية</title>
+<meta name="description" content="أسعار مباشرة لجميع الأسهم في السوق السعودي، مع إمكانية رفع بيانات وتصديرها كملف إكسل.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root{
+    --bg: #0d1512;
+    --surface: #131f1a;
+    --surface-2: #1a2921;
+    --border: #2a3b34;
+    --text: #ece7da;
+    --text-muted: #8fa095;
+    --up: #3fa34d;
+    --down: #c1533d;
+    --gold: #c9a15a;
+    --radius: 10px;
+    --font-head: "Noto Kufi Arabic", sans-serif;
+    --font-body: "IBM Plex Sans Arabic", sans-serif;
+    --font-mono: "IBM Plex Mono", monospace;
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+
+  body{
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 42px 42px;
+    background-attachment: fixed;
+    background-position: center;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection{ background: var(--gold); color: #14201c; }
+  :focus-visible{ outline: 2px solid var(--gold); outline-offset: 3px; }
+
+  .page{ max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  /* ---------- Masthead + nav (shared look) ---------- */
+
+  .masthead{
+    display: flex; align-items: center; gap: 16px;
+    padding-bottom: 22px; margin-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mark{ flex: none; width: 52px; height: 52px; }
+  .masthead h1{ font-family: var(--font-head); font-weight: 800; font-size: 1.5rem; margin: 0 0 4px; }
+  .masthead p{ margin: 0; color: var(--text-muted); font-size: 0.92rem; max-width: 56ch; }
+
+  .site-nav{ display: flex; gap: 8px; margin-bottom: 26px; }
+  .site-nav a{
+    font-family: var(--font-body); font-size: 0.86rem; font-weight: 600;
+    text-decoration: none; color: var(--text-muted);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 8px 16px;
+    transition: color .15s ease, border-color .15s ease;
+  }
+  .site-nav a:hover{ color: var(--text); border-color: var(--text-muted); }
+  .site-nav a.active{ color: #17130a; background: var(--gold); border-color: var(--gold); }
+
+  /* ---------- Section shell ---------- */
+
+  section.block{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 22px;
+  }
+  section.block h2{
+    font-family: var(--font-head);
+    font-size: 1.1rem;
+    margin: 0 0 6px;
+  }
+  section.block > p.lead{
+    color: var(--text-muted);
+    font-size: 0.87rem;
+    margin: 0 0 18px;
+    max-width: 68ch;
+  }
+
+  .live-badge{
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.76rem; color: var(--up);
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 4px 10px; margin-inline-start: 8px;
+    font-family: var(--font-mono);
+    vertical-align: middle;
+  }
+  .live-badge .dot{
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--up);
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow: 0 0 0 0 rgba(63,163,77,.5); }
+    70%{ box-shadow: 0 0 0 6px rgba(63,163,77,0); }
+    100%{ box-shadow: 0 0 0 0 rgba(63,163,77,0); }
+  }
+  @media (prefers-reduced-motion: reduce){ .live-badge .dot{ animation: none; } }
+
+  .widget-shell{
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* ---------- Upload zone (reused pattern) ---------- */
+
+  .upload-zone{
+    background: var(--surface-2);
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 32px 20px;
+    text-align: center;
+    transition: border-color .15s ease;
+    cursor: pointer;
+  }
+  .upload-zone.drag{ border-color: var(--gold); }
+  .upload-zone svg{ width: 34px; height: 34px; color: var(--gold); margin-bottom: 10px; }
+  .upload-zone h3{ font-family: var(--font-head); font-size: 1rem; margin: 0 0 6px; }
+  .upload-zone .hint{ color: var(--text-muted); font-size: 0.84rem; margin: 0 auto 16px; max-width: 50ch; }
+
+  .btn{
+    font-family: var(--font-body); font-weight: 600; font-size: 0.9rem;
+    border: none; border-radius: 7px; padding: 10px 20px; cursor: pointer;
+    transition: transform .1s ease, background .15s ease;
+  }
+  .btn-primary{ background: var(--gold); color: #17130a; }
+  .btn-primary:hover{ background: #d8ae66; }
+  .btn-primary:active{ transform: scale(0.98); }
+  .btn-primary:disabled{ opacity: .45; cursor: not-allowed; }
+  .btn-ghost{ background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover{ color: var(--text); border-color: var(--text-muted); }
+
+  .upload-actions{ display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  input[type=file]{ display: none; }
+
+  .format-note{
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+    font-size: 0.8rem; color: var(--text-muted);
+  }
+  .format-note code{
+    font-family: var(--font-mono); background: var(--bg);
+    padding: 1px 6px; border-radius: 4px; color: var(--gold); font-size: 0.78rem;
+  }
+  .format-note a{ color: var(--gold); }
+
+  /* ---------- Table toolbar + table ---------- */
+
+  .table-toolbar{
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 18px; margin-bottom: 14px;
+  }
+  .search-input{
+    flex: 1 1 220px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 9px 12px; font-family: var(--font-body); font-size: 0.88rem;
+  }
+  .row-count{ color: var(--text-muted); font-size: 0.8rem; font-family: var(--font-mono); white-space: nowrap; }
+
+  .table-card{
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .table-scroll{ max-height: 460px; overflow: auto; }
+  table{ width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.83rem; }
+  thead th{
+    position: sticky; top: 0;
+    background: #20302a;
+    color: var(--text-muted);
+    font-family: var(--font-body); font-weight: 600; font-size: 0.78rem;
+    text-align: right; padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:hover{ color: var(--text); }
+  thead th .arrow{ font-size: 0.7rem; margin-inline-start: 4px; color: var(--gold); }
+  tbody td{ padding: 8px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr:last-child td{ border-bottom: none; }
+  tbody tr:hover{ background: var(--surface); }
+
+  .empty-state{
+    padding: 30px 20px; text-align: center; color: var(--text-muted); font-size: 0.86rem;
+  }
+
+  footer{
+    margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);
+    color: var(--text-muted); font-size: 0.78rem; text-align: center;
+  }
+
+  [hidden]{ display: none !important; }
+
+  @media (max-width: 620px){
+    .masthead{ flex-direction: column; align-items: flex-start; }
+    section.block{ padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <svg class="mark" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="50" height="50" rx="8" stroke="#c9a15a" stroke-width="1.5"/>
+      <path d="M8 34L18 24L25 30L44 12" stroke="#ece7da" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8 40L16 33.5L25 38.5L44 22" stroke="#c9a15a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 4"/>
+    </svg>
+    <div class="titles">
+      <h1>أسعار السوق</h1>
+      <p>نظرة مباشرة على جميع أسهم السوق السعودي، مع أداة لرفع بياناتك الخاصة وتصديرها كملف إكسل.</p>
+    </div>
+  </header>
+
+  <nav class="site-nav">
+    <a href="index.html">محلل المتوسطات المتحركة</a>
+    <a href="market.html" class="active">أسعار السوق</a>
+  </nav>
+
+  <section class="block">
+    <h2>السوق الآن <span class="live-badge"><span class="dot"></span> مباشر</span></h2>
+    <p class="lead">
+      يعرض هذا الجزء بيانات حية لكل الأسهم المدرجة في تداول السعودية عبر ويدجت رسمي من TradingView — يتحدّث تلقائيًا أثناء تصفحك، بدون أي إعداد إضافي.
+    </p>
+    <div class="widget-shell">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
+        {
+          "width": "100%",
+          "height": 520,
+          "defaultColumn": "overview",
+          "defaultScreen": "general",
+          "market": "saudi_arabia",
+          "showToolbar": true,
+          "colorTheme": "dark",
+          "locale": "ar_AE",
+          "isTransparent": true
+        }
+        </script>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>استخراج بيانات كملف إكسل</h2>
+    <p class="lead">
+      بيانات الويدجت أعلاه محمية داخل منصة TradingView ولا يمكن تصديرها مباشرة. البديل العملي: نزّل قائمة أسعار الأسهم من
+      <a href="https://www.saudiexchange.sa/wps/portal/saudiexchange/ourmarkets/main-market-watch?locale=ar" target="_blank" rel="noopener" style="color:var(--gold)">تداول السعودية</a>
+      أو <a href="https://www.argaam.com/" target="_blank" rel="noopener" style="color:var(--gold)">أرقام</a>، وارفعها هنا — الموقع يعرضها بجدول قابل للفرز والبحث، وتقدر تنزّلها كملف إكسل منسّق بضغطة زر.
+    </p>
+
+    <div class="upload-zone" id="dropZone" tabindex="0" role="button" aria-label="ارفع ملف بيانات الأسهم">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v13m0-13 5 5m-5-5-5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h3 id="dropTitle">اسحب ملف بيانات الأسهم هنا أو اضغط للاختيار</h3>
+      <p class="hint">يدعم CSV و Excel (.xlsx / .xls)</p>
+      <div class="upload-actions">
+        <button class="btn btn-primary" id="chooseBtn" type="button">اختر ملفًا</button>
+        <button class="btn btn-ghost" id="demoBtn" type="button">جرّب ببيانات تجريبية</button>
+      </div>
+      <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+      <div class="format-note">
+        أول صف بالملف لازم يكون عناوين الأعمدة (مثل <code>الرمز</code>, <code>الاسم</code>, <code>الإغلاق</code>, <code>التغير %</code>). الموقع يعرض كل الأعمدة الموجودة بالملف كما هي.
+      </div>
+    </div>
+
+    <div id="resultArea" hidden>
+      <div class="table-toolbar">
+        <input type="text" class="search-input" id="searchInput" placeholder="ابحث عن رمز أو اسم شركة...">
+        <span class="row-count" id="rowCount"></span>
+        <button class="btn btn-primary" id="exportBtn" type="button">تنزيل كملف إكسل</button>
+      </div>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead><tr id="tableHead"></tr></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    الأسعار المعروضة لأغراض إرشادية ولا تُعد توصية استثمارية. تحقق دائمًا من المصدر الرسمي قبل اتخاذ أي قرار مالي.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var headers = [];
+  var rows = [];          // array of arrays, aligned with headers
+  var sortState = { col: -1, dir: 1 };
+
+  var els = {
+    dropZone: document.getElementById("dropZone"),
+    fileInput: document.getElementById("fileInput"),
+    chooseBtn: document.getElementById("chooseBtn"),
+    demoBtn: document.getElementById("demoBtn"),
+    dropTitle: document.getElementById("dropTitle"),
+    resultArea: document.getElementById("resultArea"),
+    searchInput: document.getElementById("searchInput"),
+    rowCount: document.getElementById("rowCount"),
+    exportBtn: document.getElementById("exportBtn"),
+    tableHead: document.getElementById("tableHead"),
+    tableBody: document.getElementById("tableBody")
+  };
+
+  els.chooseBtn.addEventListener("click", function(e){ e.stopPropagation(); els.fileInput.click(); });
+  els.dropZone.addEventListener("click", function(){ els.fileInput.click(); });
+  els.dropZone.addEventListener("keydown", function(e){
+    if(e.key === "Enter" || e.key === " "){ e.preventDefault(); els.fileInput.click(); }
+  });
+  ["dragenter","dragover"].forEach(function(evt){
+    els.dropZone.addEventListener(evt, function(e){ e.preventDefault(); e.stopPropagation(); els.dropZone.classList.add("drag"); });
+  });
+  ["dragleave","drop"].forEach(function(evt){
+    els.dropZone.addEventListener(evt, function(e){ e.preventDefault(); e.stopPropagation(); els.dropZone.classList.remove("drag"); });
+  });
+  els.dropZone.addEventListener("drop", function(e){
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) handleFile(f);
+  });
+  els.fileInput.addEventListener("change", function(e){
+    var f = e.target.files && e.target.files[0];
+    if(f) handleFile(f);
+  });
+
+  function handleFile(file){
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      try{
+        var data = new Uint8Array(evt.target.result);
+        var wb = XLSX.read(data, { type: "array" });
+        var sheet = wb.Sheets[wb.SheetNames[0]];
+        var json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
+        json = json.filter(function(r){ return r.some(function(c){ return String(c).trim() !== ""; }); });
+        if(json.length < 2){
+          els.dropTitle.textContent = "ما لقينا بيانات كافية بالملف — تأكد من التنسيق";
+          return;
+        }
+        headers = json[0].map(function(h){ return String(h).trim(); });
+        rows = json.slice(1);
+        sortState = { col: -1, dir: 1 };
+        renderTable();
+        els.dropTitle.textContent = "اسحب ملف بيانات الأسهم هنا أو اضغط للاختيار";
+      } catch(err){
+        els.dropTitle.textContent = "تعذّرت قراءة الملف — تأكد أنه CSV أو Excel صالح";
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  els.demoBtn.addEventListener("click", function(){
+    headers = ["الرمز", "الاسم", "الإغلاق", "التغير %", "أعلى", "أدنى", "حجم التداول"];
+    var names = ["أرامكو السعودية","الراجحي","سابك","الاتصالات السعودية","معادن","سابك للمغذيات الزراعية","البنك الأهلي السعودي","سناب","جرير","الدريس"];
+    rows = names.map(function(n, i){
+      var close = +(20 + Math.random()*80).toFixed(2);
+      var chg = +((Math.random()-0.5)*4).toFixed(2);
+      return [ (1010+i).toString(), n, close, chg, +(close*1.02).toFixed(2), +(close*0.98).toFixed(2), Math.floor(Math.random()*5000000) ];
+    });
+    sortState = { col: -1, dir: 1 };
+    renderTable();
+  });
+
+  els.searchInput.addEventListener("input", renderTable);
+
+  function getFilteredRows(){
+    var q = els.searchInput.value.trim().toLowerCase();
+    var filtered = !q ? rows.slice() : rows.filter(function(r){
+      return r.some(function(c){ return String(c).toLowerCase().indexOf(q) !== -1; });
+    });
+    if(sortState.col >= 0){
+      var col = sortState.col, dir = sortState.dir;
+      filtered.sort(function(a,b){
+        var av = a[col], bv = b[col];
+        var an = parseFloat(String(av).replace(/[,٬%]/g,""));
+        var bn = parseFloat(String(bv).replace(/[,٬%]/g,""));
+        if(!isNaN(an) && !isNaN(bn)) return (an-bn)*dir;
+        return String(av).localeCompare(String(bv), "ar") * dir;
+      });
+    }
+    return filtered;
+  }
+
+  function renderTable(){
+    if(!headers.length){ return; }
+    els.resultArea.hidden = false;
+
+    var headHtml = "";
+    headers.forEach(function(h, idx){
+      var arrow = "";
+      if(sortState.col === idx) arrow = '<span class="arrow">' + (sortState.dir === 1 ? "▲" : "▼") + '</span>';
+      headHtml += '<th data-col="' + idx + '">' + escapeHtml(h) + arrow + '</th>';
+    });
+    els.tableHead.innerHTML = headHtml;
+    els.tableHead.querySelectorAll("th").forEach(function(th){
+      th.addEventListener("click", function(){
+        var col = parseInt(th.getAttribute("data-col"),10);
+        if(sortState.col === col){ sortState.dir *= -1; }
+        else { sortState.col = col; sortState.dir = 1; }
+        renderTable();
+      });
+    });
+
+    var filtered = getFilteredRows();
+    els.rowCount.textContent = filtered.length.toLocaleString("ar-SA") + " سهم";
+
+    if(!filtered.length){
+      els.tableBody.innerHTML = '<tr><td colspan="'+headers.length+'"><div class="empty-state">لا توجد نتائج مطابقة</div></td></tr>';
+      return;
+    }
+    var bodyHtml = "";
+    filtered.forEach(function(r){
+      bodyHtml += "<tr>";
+      headers.forEach(function(_, idx){ bodyHtml += "<td>" + escapeHtml(r[idx] !== undefined ? r[idx] : "") + "</td>"; });
+      bodyHtml += "</tr>";
+    });
+    els.tableBody.innerHTML = bodyHtml;
+  }
+
+  function escapeHtml(v){
+    return String(v).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  els.exportBtn.addEventListener("click", function(){
+    var filtered = getFilteredRows();
+    var wsData = [headers].concat(filtered);
+    var ws = XLSX.utils.aoa_to_sheet(wsData);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "أسعار الأسهم");
+    var stamp = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, "اسعار-الاسهم-" + stamp + ".xlsx");
+  });
+
+})();
+</script>
+</body>
+</html>
